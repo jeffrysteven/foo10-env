@@ -1,0 +1,26 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+ 
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/trusty64"
+  config.vm.hostname = "parse-vm"
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "1024"
+  end
+  config.vm.network :forwarded_port, guest: 4040, host: 4040, auto_correct: false
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo apt-get update
+    sudo apt-get install -y git
+    git clone https://github.com/parse-community/parse-server
+    cd parse-server
+    docker build --tag parse-server .
+    docker run --name foo10-mongo -d mongo
+    docker run --name foo10-server --link foo10-mongo:mongo -d foo10-server --appId foo10 --masterKey foo10key --databaseURI mongodb://mongo/foo10
+    cd ..
+    git clone https://github.com/parse-community/parse-dashboard.git
+    cd parse-dashboard
+    docker build --tag parse-dashboard .
+    docker run -d -p 4040:4040 parseplatform/parse-dashboard --dev --appId foo10 --masterKey foo10key --serverURL http://localhost:1337/parse
+  SHELL
+end
